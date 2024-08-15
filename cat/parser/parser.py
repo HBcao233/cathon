@@ -12,8 +12,8 @@ class Parser(object):
     self.token = None
     self.advance()
   
-  def advance(self):
-    self.index += 1
+  def advance(self, count=1):
+    self.index += count
     self.update()
     if self.token.type == NL:
       self.advance()
@@ -49,13 +49,7 @@ class Parser(object):
       self.reverse_to(old_index)
     
   def parse(self):
-    res = self.program()
-    if not ISEOF(self.token.type):
-      raise errors.SyntaxError(
-        self.token.pos_start, self.token.pos_end, 
-        'the statement must not exist'
-      )
-    return res
+    return self.program()
   
   def blanks(self):
     count = 0
@@ -65,20 +59,23 @@ class Parser(object):
     return count
     
   def program(self) -> ListNode:
-    pos_start = self.token.pos_start.copy()
-    self.blanks()
-    if ISEOF(self.token.type):
-      return ListNode([], pos_start, self.token.pos_end.copy())
-    return self.statements(pos_start)
+    res = self.statements()
+    if not ISEOF(self.token.type):
+      raise errors.SyntaxError(
+        self.token.pos_start, self.token.pos_end, 
+        'the statement must not exist'
+      )
+    return res
     
-  def statements(self, pos_start) -> ListNode:
+  def statements(self) -> ListNode:
+    pos_start = self.token.pos_start.copy()
     res = []
+    self.blanks()
     res.extend(self.statement())
-    while True:
-      if not self.blanks() or ISEOF(self.token.type):
-        break
+    while self.blanks() and not ISEOF(self.token.type):
       # with self.try_register():
-      res.extend(self.statement())
+      r = self.statement()
+      res.extend(r)
     return ListNode(res, pos_start, self.token.pos_end.copy())
     
   def statement(self) -> list[ASTNode]:
@@ -92,9 +89,7 @@ class Parser(object):
     
   def compound_stmt(self) -> ASTNode:
     if self.token.matches(NAME, IF_KEYWORDS):
-      res = self.if_stmt()
-      self.blanks()
-      return res
+      return self.if_stmt()
   
   def simple_stmts(self) -> list[ASTNode]:
     items = []
@@ -359,11 +354,8 @@ class Parser(object):
       return self.list()
     if tok.type == LBRACE:
       return self.dict()
-      
-    raise errors.InvalidAtom(
-      tok.pos_start, self.token.pos_end,
-      tok
-    )
+    
+    assert False, f'Invalid Atom: {tok}'
   
   def list(self):
     if self.token.type != LSQB:
@@ -497,10 +489,12 @@ class Parser(object):
     
     block = self.block('if', pos_start)
     cases.append((condition, block))
-    if self.token.matches(NAME, ELIF_KEYWORDS):
+    if self.token.type == NEWLINE and self.lookahead().matches(NAME, ELIF_KEYWORDS):
+      self.advance()
       cases, else_block = self.elif_stmt(cases, elif_stmt)
-    
-    if self.token.matches(NAME, ELSE_KEYWORDS):
+      
+    if self.token.type == NEWLINE and self.lookahead().matches(NAME, ELSE_KEYWORDS):
+      self.advance()
       if else_block:
         raise errors.SyntaxError(
           self.token.pos_start, self.token.pos_end
@@ -567,9 +561,8 @@ class Parser(object):
       indent = self.token.value
       self.advance()
       
-      try:
-        res = self.statements(self.token.pos_start.copy())
-      except errors.InvalidAtom:
+      res = self.statements()
+      if not res:
         raise errors.IndentationError(
           pos_start, self.token.pos_end, 
           f'expected an indented block after {name} definition',
@@ -585,11 +578,4 @@ class Parser(object):
       self.advance()
       return res
     
-    try:
-      return ListNode(self.simple_stmts(), pos_start, self.token.pos_end.copy())
-    except errors.InvalidAtom:
-        raise errors.IndentationError(
-          pos_start, self.token.pos_end, 
-          f'expected an indented block after {name} definition',
-          self.token.pos_start, self.token.pos_end
-        )
+    return ListNode(self.simple_stmts(), pos_start, self.token.pos_end.copy())
