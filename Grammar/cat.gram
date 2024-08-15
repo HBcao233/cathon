@@ -1,0 +1,128 @@
+# PEG grammar 
+
+program: [statements] ENDMARKER
+
+statements: statement+
+statement: compound_stmt | simple_stmts
+
+compound_stmt: 
+    | if-stmt
+
+simple_stmts:
+    | simple_stmt !';' NEWLINE  # Not needed, there for speedup
+    | ';'.simple_stmt+ [';'] NEWLINE 
+  
+simple_stmt:
+    | assignment 
+    | star_expressions 
+
+assignment:
+    | (atom '=' )+ star_expressions !'=' [TYPE_COMMENT] 
+    | atom augassign star_expressions
+
+augassign:
+    | '+=' 
+    | '-=' 
+    | '*=' 
+    | '@=' 
+    | '/=' 
+    | '%=' 
+    | '&=' 
+    | '|=' 
+    | '^=' 
+    | '<<=' 
+    | '>>=' 
+    | '**=' 
+    | '//=' 
+    
+star_expressions: star_expression (',' star_expression )* [','] 
+
+star_expression:
+    # | '*' bitwise_or
+    | expression
+
+del_stmt: "del" ','.NAME+
+
+expressions: expression (',' expression )* [','] 
+
+expression:
+    | disjunction 'if' disjunction 'else' expression 
+    | disjunction '?' disjunction ':' expression
+    | disjunction
+    # | lambdef
+
+disjunction: conjunction (OR conjunction)*
+
+conjunction: inversion (AND inversion)*
+
+inversion: 
+    | NOT inversion
+    | comparison
+
+comparison: bitwise_or (('==' | '!=' | '<>' | '<' | '>' | '>=' | '<=') bitwise_or)*
+
+bitwise_or: bitwise_xor ('|' bitwise_xor)*
+
+bitwise_xor: bitwise_and ('^' bitwise_and)*
+
+bitwise_and: shift_expr ('&' shift_expr)*
+
+shift_expr: sum (('<<' | '>>') sum)*
+
+sum: term (('+' | '-' ) term)*
+
+term: power (('*' | '/' | '//' | '%' | '@') power)*
+
+factor: 
+    | ('+' | '-' | '~') factor
+    | primary
+
+power: primary ('**' primary)*
+
+primary: 
+    # | primary '.' NAME
+    | primary  '(' [arguments] ')' 
+    | primary  '[' slices ']' 
+    | atom
+    
+slices:
+    | slice !',' 
+    | ','.(slice | expression)+ [','] 
+
+slice:
+    | [expression] ':' [expression] [':' [expression] ] 
+    | named_expression 
+
+arguments: 
+    | (expression ("," expression)* ","?)? 
+    | NAME '=' expression ("," NAME '=' expression)* ","?)? 
+
+atom:
+    | NAME
+    | 'true'
+    | 'false'
+    | 'null'
+    | 'Inf'
+    | 'NaN'
+    | NUMBER
+    | STRING
+    | "(" expression ")" 
+    | list
+    | dict
+
+list: "[" (expression ("," expression)* (",")?)? "]"
+dict: "{" (expression ":" expression ("," expression ":" expression)* (",")?)? "}"
+
+
+if_stmt:
+    | 'if' expression ':' block elif_stmt 
+    | 'if' expression ':' block [else_block] 
+elif_stmt:
+    | 'elif' expression ':' block elif_stmt 
+    | 'elif' expression ':' block [else_block]
+else_block:
+    | 'else' ':' block 
+
+block: 
+    | NEWLINE INDENT statements DEDENT
+    | simple_stmts
