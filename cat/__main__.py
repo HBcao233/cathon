@@ -18,7 +18,7 @@ def run_file(file):
     with open(file) as f:
       code = f.read()
   except (Exception, SystemExit) as e:
-    print(f"CatScript: can't open file '{os.path.realpath(file)}': [Errno 2] No such file or directory")
+    print(f"Cathon: can't open file '{os.path.realpath(file)}': [Errno 2] No such file or directory")
     return
   
   try:

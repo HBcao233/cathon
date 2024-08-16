@@ -1,17 +1,26 @@
-from .values import *
+from itertools import chain
 from .. import errors
 from ..parser.nodes import *
+from .values import *
 
 
 def auto(val) -> Value:
   if isinstance(val, Value):
     return val
-  if isinstance(val, (bool, int, float)):
-    return Number(val)
+  if isinstance(val, bool):
+    return Bool(val)
+  if isinstance(val, int):
+    return Int(val)
+  if isinstance(val, float):
+    return Float(val)
   if val is None:
     return null
   if isinstance(val, str):
     return String(val)
+  if isinstance(val, tuple):
+    return Tuple(val)
+  if isinstance(val, list):
+    return List(val)
   return Single(val)
   
   
@@ -25,7 +34,7 @@ class Interpreter(object):
   
   @staticmethod
   def visit_NumberNode(node, context):
-    return Number(node.value.value).set_pos(node.value.pos_start, node.value.pos_end).set_context(context)
+    return auto(node.value.value).set_pos(node.value.pos_start, node.value.pos_end).set_context(context)
     
   @staticmethod
   def visit_StringNode(node, context):
@@ -82,12 +91,13 @@ class Interpreter(object):
         )
   
   @classmethod
+  def visit_TupleNode(cls, node, context):
+    elements = (auto(cls.visit(i, context)) for i in node.items)
+    return Tuple(elements).set_pos(node.pos_start, node.pos_end).set_context(context)
+  
+  @classmethod
   def visit_ListNode(cls, node, context):
-    elements = [
-      auto(v)
-      for i in node.items 
-      if i and (v := cls.visit(i, context)) is not None
-    ]
+    elements = (auto(cls.visit(i, context)) for i in node.items)
     return List(elements).set_pos(node.pos_start, node.pos_end).set_context(context)
   
   @classmethod
@@ -114,30 +124,63 @@ class Interpreter(object):
     if node.step is not None: 
       step = cls.visit(node.step, context)
     return Slice(start, stop, step).set_pos(node.pos_start, node.pos_end).set_context(context)
+  
+  @classmethod
+  def visit_GetAttrNode(cls, node, context):
+    object = cls.visit(node.object, context)
+    attr_name = node.attr_name.value
     
+    if 'CAT__getattribute__' in object.__class__.__dict__:
+      res = auto(object.CAT__getattribute__(attr_name))
+    else:
+      attr = 'CAT' + attr_name
+      
+      if attr in object.__dict__:
+        res = auto(object.__dict__[attr])
+      elif attr in object.__class__.__dict__:
+        res = auto(object.__class__.__dict__[attr])
+      else:
+        if 'CAT__getattr__' in object.__class__.__dict__:
+          res = auto(object.CAT__getCAT__( attr))
+        else:
+          raise errors.AttributeError(
+            node.pos_start, node.pos_end,
+            f"'{object.CAT__class__.CAT__name__}' object has no attribute '{attr_name}'", context
+          )
+      
+    return res.set_pos(node.pos_start, node.pos_end).set_context(context)
+    
+  @classmethod
+  def visit_SetAttrNode(cls, node, context):
+    object = cls.visit(node.object, context)
+    attr_name = node.attr_name.value
+    value = auto(cls.visit(node.value, context))
+    auto(object.CAT__setattribute__(attr_name, value))
+    return value.set_pos(node.pos_start, node.pos_end).set_context(context)
+  
   @classmethod
   def visit_GetItemNode(cls, node, context):
     object = cls.visit(node.object, context)
-    if not hasattr(object, '__getitem__'):
+    if not hasattr(object, 'CAT__getitem__'):
       raise errors.TypeError(
         node.pos_start, node.pos_end, 
         f"'{object.name}' object is not subscriptable"
       )
     key = cls.visit(node.key, context)
-    res = auto(object.__getitem__(key))
+    res = auto(object.CAT__getitem__(key))
     return res.set_pos(node.pos_start, node.pos_end).set_context(context)
     
   @classmethod
   def visit_SetItemNode(cls, node, context):
     object = cls.visit(node.object, context)
-    if not hasattr(object, '__setitem__'):
+    if not hasattr(object, 'CAT__setitem__'):
       raise errors.TypeError(
         node.pos_start, node.pos_end, 
         f"'{object.name}' object does not support item assignment", context
       )
     key = cls.visit(node.key, context)
     value = auto(cls.visit(node.value, context))
-    object.__setitem__(key, value)
+    object.CAT__setitem__(key, value)
     return value.set_pos(node.pos_start, node.pos_end).set_context(context)
   
   @classmethod
@@ -158,13 +201,27 @@ class Interpreter(object):
   @classmethod
   def visit_CallNode(cls, node, context):
     object = cls.visit(node.object, context)
-    if not hasattr(object, '__call__'):
+    if 'CAT__call__' not in object.__class__.__dict__:
       raise errors.TypeError(
         node.pos_start, node.pos_end, 
-        f"'{object.name}' object is not callable", context
+        f"'{object.CAT__class__.CAT__name__}' object is not callable", context
       )
     args = cls.visit(node.args, context)
     kwargs = cls.visit(node.kwargs, context)
-    kwargs = kwargs.get_pyobject()
-    res = object.__call__(*args, **kwargs)
+    try:
+      res = object.CAT__call__(*args, **kwargs)
+    except errors.RuntimeError:
+      raise
+    except TypeError as e:
+      raise errors.TypeError(
+        node.pos_start, node.pos_end,
+        f"{object.CAT__name__}() "+ str(e)[str(e).find('() ')+3:],
+        context,
+      )
+    except Exception as e:
+      raise errors.RuntimeError(
+        node.pos_start, node.pos_end,
+        str(e), context, e.__class__.__name__
+      )
     return auto(res).set_pos(node.pos_start, node.pos_end).set_context(context)
+  

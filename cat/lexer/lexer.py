@@ -13,9 +13,10 @@ class Lexer(object):
     self.indents = []
     self.indent_type = None
     
-  def advance(self):
-    self.pos.advance(self.char)
-    self.update()
+  def advance(self, count=1):
+    while (count := count - 1) >= 0:
+      self.pos.advance(self.char)
+      self.update()
     
   def update(self):
     if self.pos.index >= len(self.code):
@@ -23,6 +24,10 @@ class Lexer(object):
     else:
       self.char = self.code[self.pos.index]
       
+  def reverse_to(self, pos):
+    self.pos = pos
+    self.update()
+    
   def lookahead(self, count=1):
     index = self.pos.index + count
     if index >= len(self.code):
@@ -69,8 +74,13 @@ class Lexer(object):
       if self.char == '\\':
         token = Token(NL, pos_start=self.pos)
         self.advance()
-      elif DIGITS(self.char):
+      elif (
+        (DIGITS(self.char) and self.char != '.') or 
+        (self.char == '.' and self.lookahead() and DIGITS(self.lookahead()) and self.lookahead() != '.')
+      ):
         token = self.make_number()
+      elif self.char == '.':
+        token = self.make_dots()
       elif self.char in OP_DICT:
         token = self.make_opertor()
       elif self.char in STRING_FLAG:
@@ -149,43 +159,61 @@ class Lexer(object):
     return res
   
   def make_number(self) -> Token:
+    pos_start = self.pos.copy()
+    if self.char == '0' and self.lookahead() == 'b':
+      self.advance(2)
+      num = self.make_num(2)
+    elif self.char == '0' and self.lookahead() == 'x':
+      self.advance(2)
+      num = self.make_num(16)
+    else:
+      num = self.make_num(10)
+    return Token(NUMBER, num, pos_start, self.pos)
+  
+  def make_num(self, base=10):
+    bases = {
+      2: ('binary', BIN_DIGITS),
+      10: ('decimal', DIGITS),
+      16: ('hexadecimal', HEX_DIGITS),
+    }
     num = []
     pos_start = self.pos.copy()
     is_float = False
-    while self.char and (DIGITS(self.char) or self.char in ('_', 'b', 'x')):
+    while self.char and (
+      LETTERS_DIGITS(self.char) or 
+      self.char in ['_', '.']
+    ):
       if self.char == '.':
         is_float = True
       if self.char == '_':
         self.advance()
-        if not self.char:
-          raise errors.SyntaxError(pos_start, self.pos, 'invalid decimal literal')
         continue
+      elif not bases[base][1](self.char):
+        self.advance()
+        raise errors.SyntaxError(pos_start, self.pos, f'invalid {bases[base][0]} literal')
       num.append(self.char)
       self.advance()
     num = ''.join(num)
+    if not num:
+      self.advance()
+      raise errors.SyntaxError(pos_start, self.pos, f'invalid {bases[base][0]} literal')
+      
     if is_float:
-      if num == '.':
-        return Token(DOT, None, pos_start, self.pos)
-      elif num == '...':
-        return Token(ELLIPSIS, None, pos_start, self.pos)
-      try:
-        num = float(num)
-      except:
-        raise errors.SyntaxError(pos_start, self.pos, 'invalid float literal')
-      return Token(NUMBER, num, pos_start, self.pos)
-    if num.startswith('0b'):
-      try:
-        num = int(num[2:], 2)
-      except:
-        raise errors.SyntaxError(pos_start, self.pos, 'invalid binary literal')
-    elif num.startswith('0x'):
-      try:
-        num = int(num[2:], 16)
-      except:
-        raise errors.SyntaxError(pos_start, self.pos, 'invalid hexadecimal literal')
-    else:
-      num = int(num)
-    return Token(NUMBER, num, pos_start, self.pos)
+      return float(num)
+    return int(num, base)
+    
+  def make_dots(self):
+    pos_start = self.pos.copy()
+    self.advance()
+    count = 1
+    while self.char == '.':
+      self.advance()
+      count += 1
+    if count == 1:
+      return Token(DOT, None, pos_start, self.pos)
+    if count == 3:
+      return Token(ELLIPSIS, None, pos_start, self.pos)
+    raise errors.SyntaxError(pos_start, self.pos)
   
   def make_opertor(self) -> Token:
     def get_op(dict_, res=None):
@@ -205,8 +233,7 @@ class Lexer(object):
     pos_start = self.pos.copy()
     res = get_op(OP_DICT)
     if res is None:
-      self.pos = pos_start.copy()
-      self.update()
+      self.reverse_to(pos_start)
       return self.make_name()
     return Token(res, pos_start=pos_start, pos_end=self.pos)
       

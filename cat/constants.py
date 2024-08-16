@@ -1,10 +1,13 @@
-import re
+import re 
+from itertools import chain
 from .token import *
 from .token import EXACT_TOKEN_TYPES
 
 
 NOT_MATCH = r'(?!（|）|“|”|：|，)'
 DIGITS = re.compile(r'[0-9.]').match
+BIN_DIGITS = re.compile(r'[01]').match
+HEX_DIGITS = re.compile(r'[0-9a-fA-F]').match
 LETTERS = re.compile(NOT_MATCH+r'([a-zA-Z_\$]|[^\u0000-\u007F])').match
 LETTERS_DIGITS = re.compile(NOT_MATCH+r'([0-9a-zA-Z_\$]|[^\u0000-\u007F])').match
 
@@ -14,18 +17,18 @@ BUILTINS = {
   'Inf', 'NaN', 'exit', 
 }
 BUILTINS_FUNC = {
-  ('abs', '绝对值'): '',
-  ('aiter', '异步迭代器'): '',
-  ('all', '全都'): '',
-  ('anext', '异步迭代'): '',
-  'ascii': '',
-  ('any', '存在'): '',
-  ('print', '打印'): '',
-  ('len', '长度'): '',
-  ('str', '字符串'): '',
-  'repr': '',
+  ('abs', '绝对值'),
+  ('aiter', '异步迭代器'),
+  ('all', '全都'),
+  ('anext', '异步迭代'),
+  ('ascii', ),
+  ('any', '存在'),
+  ('print', '打印'),
+  ('len', '长度'),
+  ('str', '字符串'),
+  ('repr', ),
 }
-BUILTINS |= set(BUILTINS_FUNC.keys()) 
+BUILTINS |= set(chain.from_iterable(BUILTINS_FUNC))
 
 COMP_OP = { EQEQUAL, NOTEQUAL, LESS, GREATER, LESSEQUAL, GREATEREQUAL }
 BITWISE_OR_OP = { VBAR }
@@ -33,7 +36,7 @@ BITWISE_XOR_OP = { CIRCUMFLEX }
 BITWISE_AND_OP = { AMPER }
 SHIFT_OP = { LEFTSHIFT, RIGHTSHIFT }
 
-SUM_OP = {PLUS, MINUS}
+SUM_OP = { PLUS, MINUS }
 TERM_OP = { STAR, SLASH, DOUBLESLASH, PERCENT, AT }
 POWER_OP = { DOUBLESTAR }
 UNARY_OP = { PLUS, MINUS, TILDE }

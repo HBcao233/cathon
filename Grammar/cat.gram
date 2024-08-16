@@ -80,7 +80,7 @@ factor:
 power: primary ('**' primary)*
 
 primary: 
-    # | primary '.' NAME
+    | primary '.' NAME
     | primary  '(' [arguments] ')' 
     | primary  '[' slices ']' 
     | atom
@@ -91,7 +91,7 @@ slices:
 
 slice:
     | [expression] ':' [expression] [':' [expression] ] 
-    | named_expression 
+    | expression 
 
 arguments: 
     | (expression ("," expression)* ","?)? 
@@ -107,11 +107,27 @@ atom:
     | NUMBER
     | STRING
     | "(" expression ")" 
+    | tuple
     | list
     | dict
 
-list: "[" (expression ("," expression)* (",")?)? "]"
-dict: "{" (expression ":" expression ("," expression ":" expression)* (",")?)? "}"
+
+tuple:
+    | '(' [star_expression ',' [star_expressions]  ] ')' 
+
+list: 
+    | "[" [star_expressions] "]"
+
+dict: 
+    | "{" [double_starred_kvpairs] "}"
+
+double_starred_kvpairs: ','.double_starred_kvpair+ [','] 
+
+double_starred_kvpair:
+    # | '**' bitwise_or 
+    | kvpair
+
+kvpair: expression ':' expression
 
 
 if_stmt:

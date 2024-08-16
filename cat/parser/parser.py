@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-
 from .nodes import *
 from ..constants import *
 from .. import errors
@@ -58,7 +57,7 @@ class Parser(object):
       count += 1
     return count
     
-  def program(self) -> ListNode:
+  def program(self) -> TupleNode:
     res = self.statements()
     if not ISEOF(self.token.type):
       raise errors.SyntaxError(
@@ -67,16 +66,18 @@ class Parser(object):
       )
     return res
     
-  def statements(self) -> ListNode:
+  def statements(self) -> TupleNode:
     pos_start = self.token.pos_start.copy()
     res = []
     self.blanks()
+    if ISEOF(self.token.type):
+      return TupleNode(res, pos_start, self.token.pos_end.copy())
     res.extend(self.statement())
     while self.blanks() and not ISEOF(self.token.type):
       # with self.try_register():
       r = self.statement()
       res.extend(r)
-    return ListNode(res, pos_start, self.token.pos_end.copy())
+    return TupleNode(res, pos_start, self.token.pos_end.copy())
     
   def statement(self) -> list[ASTNode]:
     pos_start = self.token.pos_start.copy()
@@ -106,19 +107,24 @@ class Parser(object):
     tok = None
     with self.try_register() as old_index:
       pos_start = self.token.pos_start.copy()
-      p = self.primary()
+      var = self.primary()
       tok = self.token 
     if tok is not None and (tok.type == EQUAL or tok.type in ASSIGNMENT_OP_DICT):
-      return self.assignment(p, pos_start)
+      return self.assignment(var, pos_start)
     else:
       self.reverse_to(old_index)
     
     if self.token.matches(NAME, DELETE_KEYWORDS):
       return self.del_stmt()
-    return self.star_expressions()
+    node = self.star_expressions()
+    if len(node.items) == 1:
+      return node.items[0]
+    return node
   
   def assignment(self, var, pos_start):
     def get_node(var, value):
+      if isinstance(var, GetAttrNode):
+        return SetAttrNode(var.object, var.attr_name, value, var.object.pos_start)
       if isinstance(var, GetItemNode):
         return SetItemNode(var.object, var.key, value, var.object.pos_start)
       return VarAssignNode(var, value)
@@ -152,18 +158,25 @@ class Parser(object):
     if len(var_list) == 1:
       var = var_list[0]
       return get_node(var, value)
-    return ListNode([
+    return TupleNode([
       get_node(var, value) 
       for var in var_list
     ], pos_start, self.token.pos_end.copy())
   
-  def star_expressions(self):
-    return self.star_expression()
+  def star_expressions(self) -> TupleNode:
+    pos_start = self.token.pos_start.copy()
+    items = [self.star_expression()]
+    while self.token.type == COMMA:
+      self.advance()
+      if self.token.type in (RPAR, RSQB):
+        break
+      items.append(self.star_expression())
+    return TupleNode(items, pos_start, self.token.pos_end.copy())
     
-  def star_expression(self):
+  def star_expression(self) -> ASTNode:
     return self.expression()
     
-  def expression(self):
+  def expression(self) -> ASTNode:
     res = self.disjunction()
     if self.token.matches(NAME, IF_KEYWORDS):
       self.advance()
@@ -239,7 +252,17 @@ class Parser(object):
     pos_start = self.token.pos_start.copy()
     if atom is None:
       atom = self.atom()
-      
+    
+    if self.token.type == DOT:
+      self.advance()
+      if self.token.type != NAME:
+        raise errors.SyntaxError(
+          self.token.pos_start, self.token.pos_end, 
+        )
+      tok = self.token
+      self.advance()
+      return self.primary(GetAttrNode(atom, tok, pos_start, tok.pos_end.copy()))
+    
     if self.token.type == LPAR:
       self.advance()
       args, kwargs = self.arguments()
@@ -249,7 +272,7 @@ class Parser(object):
           'expected ")"'
         )
       self.advance()
-      return CallNode(self.primary(atom), args, kwargs, pos_start, self.token.pos_end.copy())
+      return self.primary(CallNode(atom, args, kwargs, pos_start, self.token.pos_end.copy()))
     
     if self.token.type == LSQB:
       self.advance()
@@ -263,9 +286,9 @@ class Parser(object):
       return GetItemNode(self.primary(atom), key, pos_start, self.token.pos_end.copy())
     return atom
   
-  def arguments(self) -> tuple[list[ASTNode], dict[str, ASTNode]]:
+  def arguments(self) -> tuple[TupleNode, DictNode]:
     if self.token.type == RPAR:
-      return ListNode([], self.token.pos_start.copy(), self.token.pos_end.copy()), DictNode({}, self.token.pos_start.copy(), self.token.pos_end.copy())
+      return TupleNode([], self.token.pos_start.copy(), self.token.pos_end.copy()), DictNode({}, self.token.pos_start.copy(), self.token.pos_end.copy())
     
     pos_start = dict_pos_start = self.token.pos_start.copy()
     pos_end = None
@@ -289,13 +312,12 @@ class Parser(object):
             'positional argument follows keyword argument'
           )
         args.append(self.expression())
-    return ListNode(args, pos_start, pos_end), DictNode(kwargs, dict_pos_start, self.token.pos_end.copy())
+    return TupleNode(args, pos_start, pos_end), DictNode(kwargs, dict_pos_start, self.token.pos_end.copy())
   
-  # tuple(slice, slice, ...)
   def slices(self):
     return self.slice()
     
-  def slice(self):
+  def slice(self) -> SliceNode:
     pos_start = self.token.pos_start.copy()
     v1 = None
     if self.token.type != COLON:
@@ -322,7 +344,7 @@ class Parser(object):
       left = BinaryOpNode(left, op, func())
     return left
     
-  def atom(self):
+  def atom(self) -> ASTNode:
     tok = self.token
     if tok.type in (NUMBER, STRING):
       self.advance()
@@ -340,24 +362,48 @@ class Parser(object):
       return VarAccessNode(tok)
       
     if tok.type == LPAR:
-      self.advance()
-      node = self.expression()
-      if self.token.type != RPAR:
-        raise errors.SyntaxError(
-          tok.pos_start, tok.pos_end, 
-          'expected ")"'
-        )
-      self.advance()
-      return node
+      return self.tuple_expr()
     
     if tok.type == LSQB:
-      return self.list()
+      return self.list_expr()
     if tok.type == LBRACE:
-      return self.dict()
+      return self.dict_expr()
+      
+    raise errors.SyntaxError(
+      self.token.pos_start, self.token.pos_end,
+    )
     
-    assert False, f'Invalid Atom: {tok}'
-  
-  def list(self):
+  def tuple_expr(self) -> TupleNode:
+    pos_start = self.token.pos_start.copy()
+    self.advance()
+    if self.token.type == RPAR:
+      self.advance()
+      return TupleNode([], pos_start, self.token.pos_end.copy())
+    
+    node = self.star_expression()
+    if self.token.type == RPAR:
+      self.advance()
+      return node
+    if self.token.type != COMMA:
+      raise errors.SyntaxError(
+        self.token.pos_start, self.token.pos_end, 
+        'invalid syntax. Perhaps you forgot a comma?'
+      )
+    self.advance()
+    if self.token.type == RPAR:
+      self.advance()
+      return TupleNode([node], pos_start, self.token.pos_end.copy())
+    
+    items = self.star_expressions().items
+    if self.token.type != RPAR:
+      raise errors.SyntaxError(
+        pos_start, self.token.pos_end, 
+        "'(' was never closed"
+      )
+    self.advance()
+    return TupleNode([node] + items, pos_start, self.token.pos_end.copy())
+    
+  def list_expr(self) -> ListNode:
     if self.token.type != LSQB:
       raise errors.SyntaxError(
         self.token.pos_start, self.token.pos_end, 
@@ -374,12 +420,7 @@ class Parser(object):
       self.advance()
       return ListNode([], pos_start, self.token.pos_end)
     
-    items = [self.expression()]
-    while self.token.type == COMMA:
-      self.advance()
-      if self.token.type == RSQB:
-        break
-      items.append(self.expression())
+    items = self.star_expressions().items
     if self.token.type != RSQB:
       raise errors.SyntaxError(
         self.token.pos_start, self.token.pos_end, 
@@ -388,7 +429,7 @@ class Parser(object):
     self.advance()
     return ListNode(items, pos_start, self.token.pos_end.copy())
   
-  def dict(self):
+  def dict_expr(self) -> DictNode:
     if self.token.type != LBRACE:
       raise errors.SyntaxError(
         self.token.pos_start, self.token.pos_end, 
@@ -401,26 +442,7 @@ class Parser(object):
       self.advance()
       return DictNode({}, pos_start, self.token.pos_end)
       
-    k = self.expression()
-    if self.token.type != COLON:
-      raise errors.SyntaxError(
-        self.token.pos_start, self.token.pos_end, 
-        'expected ":"'
-      )
-    self.advance()
-    items = {k: self.expression()}
-    while self.token.type == COMMA:
-      self.advance()
-      if self.token.type == RBRACE:
-        break
-      k = self.expression()
-      if self.token.type != COLON:
-        raise errors.SyntaxError(
-          self.token.pos_start, self.token.pos_end, 
-          'expected ":"'
-        )
-      self.advance()
-      items[k] = self.expression()
+    items = self.double_starred_kvpairs()
     if self.token.type != RBRACE:
       raise errors.SyntaxError(
         self.token.pos_start, self.token.pos_end, 
@@ -428,6 +450,31 @@ class Parser(object):
       )
     self.advance()
     return DictNode(items, pos_start, self.token.pos_end.copy())
+    
+  def double_starred_kvpairs() -> dict[ASTNode, ASTNode]:
+    k, v = self.double_starred_kvpair()
+    items = {k: v}
+    while self.token.type == COMMA:
+      self.advance()
+      if self.token.type == RBRACE:
+        break
+      k, v = self.double_starred_kvpair()
+      items[k] = v 
+    return items
+  
+  def double_starred_kvpair(self) -> tuple[ASTNode, ASTNode]:
+    return self.kvpair()
+    
+  def kvpair(self) -> tuple[ASTNode, ASTNode]:
+    k = self.expression()
+    if self.token.type != COLON:
+      raise errors.SyntaxError(
+        self.token.pos_start, self.token.pos_end, 
+        'expected ":"'
+      )
+    self.advance()
+    v = self.expression()
+    return k, v 
   
   def del_stmt(self):
     if not self.token.matches(NAME, DELETE_KEYWORDS):

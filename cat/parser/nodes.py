@@ -267,9 +267,9 @@ class GetAttrNode(ASTNode):
   """
   属性值访问节点
   """
-  def __init__(self, object: ASTNode, key: ASTNode, pos_start, pos_end):
+  def __init__(self, object: ASTNode, attr_name: Token, pos_start, pos_end):
     self.object = object
-    self.key = key
+    self.attr_name = attr_name
     self.pos_start = pos_start
     self.pos_end = pos_end
     
@@ -277,7 +277,27 @@ class GetAttrNode(ASTNode):
     return {
       'type': 'get-attr',
       'object': self.object.to_dict(),
-      'key': self.key.to_dict(),
+      'attr-name': self.attr_name.to_dict(),
+    }
+
+
+class SetAttrNode(ASTNode):
+  """
+  属性值设置节点
+  """
+  def __init__(self, object: ASTNode, attr_name: Token, value: ASTNode, pos_start):
+    self.object = object
+    self.attr_name = attr_name
+    self.value = value
+    self.pos_start = pos_start
+    self.pos_end = value.pos_end.copy()
+    
+  def to_dict(self):
+    return {
+      'type': 'get-attr',
+      'object': self.object.to_dict(),
+      'attr-name': self.attr_name.to_dict(),
+      'value': self.value.to_dict(),
     }
 
 
@@ -324,7 +344,7 @@ class IfNode(ASTNode):
 class CallNode(ASTNode):
   def __init__(self, 
     object: ASTNode,
-    args: ListNode,
+    args: TupleNode,
     kwargs: DictNode,
     pos_start, pos_end,
   ):
