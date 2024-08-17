@@ -1,9 +1,8 @@
-import string, sys, os, atexit
+import re, string, sys, os, atexit
+from . import errors, __version__
 from .basic import run
 from .constants import BUILTINS, KEYWORDS
 from .interpreter import values
-from . import version, errors
-import re
 
 __all__ = ["Shell"]
 
@@ -16,7 +15,7 @@ newline_pattern = re.compile(r'(:|\(|\[|\{|\\)$').search
 class Shell:
   prompt = PROMPT
   identchars = IDENTCHARS
-  intro = 'Welcome to CatScript ' + version.to_string()
+  intro = 'Welcome to Cathon ' + __version__
 
   def __init__(self):
     self.stdin = sys.stdin
@@ -26,6 +25,8 @@ class Shell:
     
     try:
       import readline
+      if not os.path.isfile(self.histfile):
+        open(self.histfile, 'w').close()
       self.old_completer = readline.get_completer()
       readline.set_completer(self.complete)
       readline.parse_and_bind("tab: complete")

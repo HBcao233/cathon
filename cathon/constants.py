@@ -16,17 +16,15 @@ BUILTINS = {
   '与', '或', '非',
   'Inf', 'NaN', 'exit', 
 }
-BUILTINS_FUNC = {
-  ('abs', '绝对值'),
-  ('aiter', '异步迭代器'),
-  ('all', '全都'),
-  ('anext', '异步迭代'),
-  ('ascii', ),
-  ('any', '存在'),
-  ('print', '打印'),
-  ('len', '长度'),
-  ('str', '字符串'),
-  ('repr', ),
+BUILTINS_FUNC: dict[tuple, callable] = {
+  ('print', '打印'): print,
+  ('getattr', '取属性'): 'cat_getattr',
+  ('abs', '绝对值'): 'cat_abs',
+  ('len', '长度'): 'cat_len',
+  # ('repr', ): 'cat_repr',
+  # ('all', '全都'): all,
+  # ('ascii', ): ascii,
+  # ('any', '存在'): 'cat_any',
 }
 BUILTINS |= set(chain.from_iterable(BUILTINS_FUNC))
 

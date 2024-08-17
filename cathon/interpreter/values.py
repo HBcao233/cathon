@@ -1,16 +1,16 @@
 from abc import abstractmethod
-import math, inspect
+import math, inspect, sys
 
 from ..constants import *
 from .. import errors
 from .context import Context
 
 
-def get_attr(object, attr):
+def cat_getattr(object, attr, default=None):
   if not isinstance(object, (
     Object, Object._CAT__class__
   )):
-    return None
+    return default
   if 'CAT__getattribute__' in object.__class__.__dict__:
     res = object.CAT__getattribute__(attr_name)
   attr = 'CAT' + attr
@@ -22,12 +22,19 @@ def get_attr(object, attr):
     if 'CAT__getattr__' in object.__class__.__dict__:
       res = object.CAT__getattr__(attr)
     else:
-      res = None
+      res = default
   
-  if res and get_attr(res, '__get__'):
+  if res is not None and cat_getattr(res, '__get__'):
     return res.CAT__get__(object, object.__class__)
   return res 
-    
+
+
+def cat_abs(obj):
+  return cat_getattr(obj, '__abs__')
+
+def cat_len(obj):
+  return cat_getattr(obj, '__abs__')
+
 
 class Object:
   def __init__(self):
@@ -242,7 +249,7 @@ class Type(Object):
         self.context,
       )
     if len(args) == 1:
-      return get_attr(args[0], '__class__')
+      return cat_getattr(args[0], '__class__')
     return self.CAT__new__(*args, **kwds)
   
   def CAT__new__(self, name, bases, dict, **kwds):
@@ -447,8 +454,10 @@ false = Bool(False)
 class IntType(Type):
   CAT__name__ = 'int'
   CAT__class__ = cat_type
-  def CAT__call__(self, value=0, /, base=Int(10)):
-    return Int(int(value.get_object(), base.get_object()))
+  def CAT__call__(self, value=0, /, base=10):
+    if isinstance(base, Int):
+      base = base.get_object()
+    return Int(int(value.get_object(), base))
 
 
 class Int(Number):
@@ -685,9 +694,9 @@ class Builtin_Function_Or_Method_Type(Type):
 
 class Builtin_Function_Or_Method(Object):
   CAT__class__ = Builtin_Function_Or_Method_Type()
-  def __init__(self, func):
+  def __init__(self, func, name):
     self.func = func 
-    self.CAT__name__ = func.__name__
+    self.CAT__name__ = name
     
   def get_object(self):
     return self.func

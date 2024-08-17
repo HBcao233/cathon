@@ -1,0 +1,25 @@
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cathon*"]
+namespaces = false
+
+
+[project]
+name = "cathon"
+dynamic = ["version"]
+authors = [{ name = "HBcao233", email = "hbcaoqaq@gmail.com" }]
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["cat"]
+requires-python = ">=3.9"
+
+[project.scripts]
+cathon = "cathon.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/HBcao233/cathon"

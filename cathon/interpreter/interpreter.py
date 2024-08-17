@@ -133,7 +133,7 @@ class Interpreter(object):
     object = cls.visit(node.object, context)
     attr_name = node.attr_name.value
     
-    res = get_attr(object, attr_name)
+    res = cat_getattr(object, attr_name)
     if res is None:
       raise errors.AttributeError(
         node.pos_start, node.pos_end,
@@ -207,8 +207,7 @@ class Interpreter(object):
     except errors.RuntimeError:
       raise
     except TypeError as e:
-      print(e)
-      if isinstance(object, Type):
+      if 'CAT__name__' in object.__dict__:
         name = object.CAT__name__
       else:
         name = object.CAT__class__.CAT__name__

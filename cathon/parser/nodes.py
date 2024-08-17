@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Sequence, Mapping
+from typing import Union
 from ..lexer.position import Position
 from ..lexer.tokens import Token
 
@@ -104,7 +105,7 @@ class VarAssignNode(ASTNode):
   变量设置节点
   """
   def __init__(self, 
-    var: Token | VarAccessNode, 
+    var: Union[Token, VarAccessNode], 
     value: ASTNode,
   ):
     if isinstance(var, VarAccessNode):
