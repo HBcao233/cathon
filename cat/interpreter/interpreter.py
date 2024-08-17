@@ -4,8 +4,8 @@ from ..parser.nodes import *
 from .values import *
 
 
-def auto(val) -> Value:
-  if isinstance(val, Value):
+def auto(val) -> Object:
+  if isinstance(val, Object):
     return val
   if isinstance(val, bool):
     return Bool(val)
@@ -21,6 +21,8 @@ def auto(val) -> Value:
     return Tuple(val)
   if isinstance(val, list):
     return List(val)
+  if callable(val):
+    return Function(val)
   return Single(val)
   
   
@@ -125,30 +127,20 @@ class Interpreter(object):
       step = cls.visit(node.step, context)
     return Slice(start, stop, step).set_pos(node.pos_start, node.pos_end).set_context(context)
   
+  
   @classmethod
   def visit_GetAttrNode(cls, node, context):
     object = cls.visit(node.object, context)
     attr_name = node.attr_name.value
     
-    if 'CAT__getattribute__' in object.__class__.__dict__:
-      res = auto(object.CAT__getattribute__(attr_name))
-    else:
-      attr = 'CAT' + attr_name
+    res = get_attr(object, attr_name)
+    if res is None:
+      raise errors.AttributeError(
+        node.pos_start, node.pos_end,
+        f"'{object.CAT__class__.CAT__name__}' object has no attribute '{attr_name}'", context
+      )
       
-      if attr in object.__dict__:
-        res = auto(object.__dict__[attr])
-      elif attr in object.__class__.__dict__:
-        res = auto(object.__class__.__dict__[attr])
-      else:
-        if 'CAT__getattr__' in object.__class__.__dict__:
-          res = auto(object.CAT__getCAT__( attr))
-        else:
-          raise errors.AttributeError(
-            node.pos_start, node.pos_end,
-            f"'{object.CAT__class__.CAT__name__}' object has no attribute '{attr_name}'", context
-          )
-      
-    return res.set_pos(node.pos_start, node.pos_end).set_context(context)
+    return auto(res).set_pos(node.pos_start, node.pos_end).set_context(context)
     
   @classmethod
   def visit_SetAttrNode(cls, node, context):
@@ -164,7 +156,7 @@ class Interpreter(object):
     if not hasattr(object, 'CAT__getitem__'):
       raise errors.TypeError(
         node.pos_start, node.pos_end, 
-        f"'{object.name}' object is not subscriptable"
+        f"'{object.CAT__class__.CAT__name__}' object is not subscriptable", context
       )
     key = cls.visit(node.key, context)
     res = auto(object.CAT__getitem__(key))
@@ -201,21 +193,28 @@ class Interpreter(object):
   @classmethod
   def visit_CallNode(cls, node, context):
     object = cls.visit(node.object, context)
-    if 'CAT__call__' not in object.__class__.__dict__:
+    if 'CAT__call__' not in object.__dict__ and 'CAT__call__' not in object.__class__.__dict__:
       raise errors.TypeError(
         node.pos_start, node.pos_end, 
         f"'{object.CAT__class__.CAT__name__}' object is not callable", context
       )
     args = cls.visit(node.args, context)
+    if isinstance(object, Function) and isinstance(node.object, GetAttrNode):
+      args = Tuple((cls.visit(node.object.object, context), *args))
     kwargs = cls.visit(node.kwargs, context)
     try:
       res = object.CAT__call__(*args, **kwargs)
     except errors.RuntimeError:
       raise
     except TypeError as e:
+      print(e)
+      if isinstance(object, Type):
+        name = object.CAT__name__
+      else:
+        name = object.CAT__class__.CAT__name__
       raise errors.TypeError(
         node.pos_start, node.pos_end,
-        f"{object.CAT__name__}() "+ str(e)[str(e).find('() ')+3:],
+        f"{name}() "+ str(e)[str(e).find('() ')+3:],
         context,
       )
     except Exception as e:

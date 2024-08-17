@@ -9,7 +9,10 @@ from .interpreter import (
   Builtin_Function_Or_Method,
 )
 from .interpreter.values import (
-  Number, null, meta, value_meta
+  null, cat_type, cat_object,
+  Type, Object, Bool,
+  Int, Float, String, Tuple,
+  List, Dict
 )
 
 
@@ -18,11 +21,18 @@ global_symbol_table = SymbolTable()
 
 def set_builtins():
   g = global_symbol_table
-  g.set('Inf', Number(float('inf')))
-  g.set('NaN', Number(float('nan')))
+  g.set('Inf', Float(float('inf')))
+  g.set('NaN', Float(float('nan')))
   g.set('null', null)
-  g.set('type', meta)
-  g.set('object', value_meta)
+  g.set('type', cat_type)
+  g.set('object', cat_object)
+  g.set('bool', Bool.CAT__class__)
+  g.set('int', Int.CAT__class__)
+  g.set('float', Float.CAT__class__)
+  g.set('str', String.CAT__class__)
+  g.set('list', List.CAT__class__)
+  g.set('tuple', Tuple.CAT__class__)
+  g.set('dict', Dict.CAT__class__)
   
   for names in BUILTINS_FUNC:
     assert isinstance(names, tuple), "item of BUILTINS_FUNC must be a tuple"

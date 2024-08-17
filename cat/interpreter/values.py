@@ -1,22 +1,44 @@
-import math, inspect
 from abc import abstractmethod
+import math, inspect
+
 from ..constants import *
 from .. import errors
 from .context import Context
 
 
-class Value:
-  @property
-  def CAT__class__(self):
-    return value_meta
-    
-  @property
-  def CAT__dict__(self):
-    return {k: v for k, v in self.__dict__.items() if k.startswith('ATTR')}
+def get_attr(object, attr):
+  if not isinstance(object, (
+    Object, Object._CAT__class__
+  )):
+    return None
+  if 'CAT__getattribute__' in object.__class__.__dict__:
+    res = object.CAT__getattribute__(attr_name)
+  attr = 'CAT' + attr
+  if attr in object.__dict__:
+    res = object.__dict__[attr]
+  elif attr in object.__class__.__dict__:
+    res = object.__class__.__dict__[attr]
+  else:
+    if 'CAT__getattr__' in object.__class__.__dict__:
+      res = object.CAT__getattr__(attr)
+    else:
+      res = None
   
+  if res and get_attr(res, '__get__'):
+    return res.CAT__get__(object, object.__class__)
+  return res 
+    
+
+class Object:
   def __init__(self):
     self.set_pos()
     self.set_context()
+  
+  class _CAT__class__:
+    CAT__name__ = '<anonymous>'
+    def CAT__get__(self, instance, type=None):
+      return cat_object
+  CAT__class__ = _CAT__class__()
   
   @abstractmethod
   def get_object(self):
@@ -61,7 +83,7 @@ class Value:
     return self.invalid(op)
   
   def binary_op(self, op, other):
-    assert isinstance(other, Value), "binary_op"
+    assert isinstance(other, Object), "binary_op"
     
     try:
       if op == DOUBLESTAR:
@@ -119,15 +141,16 @@ class Value:
           return self.CAT__ge__(other)
       
     except AttributeError:
-      return errors.TypeError(
+      raise errors.TypeError(
         self.pos_start, self.pos_end, 
-        f"'{OP_REDICT[op]}' not supported between instances of '{self.CAT__name__}' and '{other.CAT__name__}'", 
+        f"'{OP_REDICT[op]}' not supported between instances of '{self.CAT__class__.CAT__name__}' and '{other.CAT__class__.CAT__name__}'", 
         self.context
       )
     return self.invalid(op, other)
   
   def CAT__repr__(self):
-    return f"<class '{self.CAT__class__.CAT__name__}'>"
+    t = super().__repr__()
+    return "<object " + t[t.find('object'):]
     
   def CAT__str__(self):
     return self.CAT__repr__()
@@ -137,9 +160,6 @@ class Value:
     
   def __str__(self):
     return self.CAT__str__()
-  
-  def __len__(self):
-    return self.CAT__len__()
     
   def __iter__(self):
     return self.CAT__iter__()
@@ -149,18 +169,6 @@ class Value:
     
   def __getitem__(self):
     return self.CAT__getitem__()
-  
-  def get(self, key):
-    return self.CATget(key)
- 
-  def keys(self):
-    return self.CATkeys()
-    
-  def values(self):
-    return self.CATvalues()
-    
-  def items(self):
-    return self.CATitems()
   
   def test_type(self, obj, expected_type):
     func_name = inspect.stack(1)[1].function[3:]
@@ -173,16 +181,49 @@ class Value:
         f'{func_name}() argument 1 must be {expected_type.CAT__class__.CAT__name__}, not {obj.CAT__class__.CAT__name__}',
         self.context,
       )
-    
 
-class Meta(Value):
+
+class cat_property(Object):
+  def __init__(self, fget=None, fset=None):
+    self.fget = fget
+    self.fset = fset
+
+  def CAT__get__(self, obj, type=None):
+    if self.fget is None:
+      raise AttributeError("unreadable attribute")
+    return self.fget(obj)
+
+  def CAT__set__(self, obj, value):
+    if self.fset is None:
+      raise AttributeError("can't set attribute")
+    self.fset(obj, value)
+
+  def getter(self, fget):
+    return type(self)(fget, self.fset)
+
+  def setter(self, fset):
+    return type(self)(self.fget, fset)
+
+
+class Type(Object):
   CAT__name__: str = 'type'
   CAT__qualname__: str = 'type'
-  
   def get_object(self):
     return type
+      
+  @cat_property
+  def CAT__dict__(self):
+    class mappingproxy(Dict):
+      CAT__class__ = mappingproxy_type()
+      def __init__(self, value):
+        super().__init__(value)
+        
+      def CATkeys(self):
+        return self.value.keys()
     
-  @property
+    return mappingproxy({k[3:]: v for k, v in self.__class__.__dict__.items() if k.startswith('CAT')})
+  
+  @cat_property
   def CAT__class__(self):
     return self
     
@@ -201,28 +242,43 @@ class Meta(Value):
         self.context,
       )
     if len(args) == 1:
-      return args[0].CAT__class__
+      return get_attr(args[0], '__class__')
     return self.CAT__new__(*args, **kwds)
   
   def CAT__new__(self, name, bases, dict, **kwds):
     self.test_type(name, String)
     self.test_type(bases, Tuple)
     self.test_type(dict, Dict)
-    a = Meta()
+    a = Type()
     a.CAT__name__ = name.get_object()
     return a
   
-meta = Meta()
+cat_type = Type()
 
 
-class ValueMeta(Meta):
+class mappingproxy_type(Type):
+  CAT__name__ = 'mappingproxy'
+  CAT__class__ = cat_type
+      
+
+class Property_Type(Type):
+  CAT__name__ = 'property'
+  CAT__class__ = cat_type
+
+cat_property.CAT__class__ = Property_Type()
+
+    
+    
+class ObjectType(Type):
   CAT__name__ = 'object'
-  CAT__class__ = meta
+  CAT__class__ = cat_type
+  def CAT__call__(self):
+    return Object()
 
-value_meta = ValueMeta()
+cat_object = ObjectType()
 
 
-class Single(Value):
+class Single(Object):
   def __init__(self, value):
     super().__init__()
     self.value = value
@@ -232,6 +288,38 @@ class Single(Value):
   
   def CAT__repr__(self):
     return repr(self.value)
+  
+  def CAT__bool__(self):
+    return bool(self.value)
+
+
+class NullType(Type):
+  CAT__name__ = 'nulltype'
+  CAT__class__ = cat_type
+  def CAT__call__(self):
+    return null
+
+
+class Null(Single):
+  CAT__class__ = NullType()
+  def __init__(self):
+    super().__init__(None)
+  
+  def get_object(self):
+    return None
+  
+  def __and__(self, other):
+    raise TypeError
+  
+  def __hash__(self):
+    return hash(None)
+  
+  def __eq__(self, other):
+    if isinstance(other, Null): 
+      return True
+    return NotImplemented
+
+null = Null()
 
 
 class Number(Single):
@@ -323,9 +411,6 @@ class Number(Single):
   def CAT__rshift__(self, other):
     return self.get_object() >> other.get_object()
   
-  def CAT__bool__(self):
-    return bool(self.get_object())
-    
   def CAT__hash__(self):
     return hash(self.get_object())
 
@@ -342,62 +427,66 @@ class Number(Single):
     return self.__lt__(other) or self.__eq__(other)
 
 
-class BoolMeta(ValueMeta):
+class BoolType(Type):
   CAT__name__ = 'bool'
-  CAT__class__ = value_meta
+  CAT__class__ = cat_type
   def CAT__call__(self, value):
-    return Bool(value)
-  
-
-class IntMeta(ValueMeta):
-  CAT__name__ = 'int'
-  CAT__class__ = value_meta
-  def CAT__call__(self, value):
-    return Int(value)
+    return Bool(value.CAT__bool__())
 
 
-class FloatMeta(ValueMeta):
-  CAT__name__ = 'float'
-  CAT__class__ = value_meta
-  def CAT__call__(self, value):
-    return Float(value)
-
-bool_meta = BoolMeta()
-int_meta = IntMeta()
-float_meta = FloatMeta()
 class Bool(Number):
-  CAT__class__ = bool_meta
+  CAT__class__ = BoolType()
   def __init__(self, value):
     super().__init__(bool(value))
 
 
-class Int(Number):
-  CAT__class__ = int_meta
-  def __init__(self, value):
-    super().__init__(int(value))
-
-
-class Float(Number):
-  CAT__class__ = float_meta
-  def __init__(self, value):
-    super().__init__(float(value))
-    
 true = Bool(True)
 false = Bool(False)
 
 
-class StringMeta(ValueMeta):
-  CAT__name__ = 'str'
-  CAT__class__ = value_meta
+class IntType(Type):
+  CAT__name__ = 'int'
+  CAT__class__ = cat_type
+  def CAT__call__(self, value=0, /, base=Int(10)):
+    return Int(int(value.get_object(), base.get_object()))
+
+
+class Int(Number):
+  CAT__class__ = IntType()
+  def __init__(self, value):
+    super().__init__(int(value))
+
+
+class FloatType(Type):
+  CAT__name__ = 'float'
+  CAT__class__ = cat_type
   def CAT__call__(self, value):
-    return str(value)
-    
-string_meta = StringMeta()
+    return Float(value)
+
+
+class Float(Number):
+  CAT__class__ = FloatType()
+  def __init__(self, value):
+    super().__init__(float(value))
+
+
+class StringType(Type):
+  CAT__name__ = 'str'
+  CAT__class__ = cat_type
+  def CAT__call__(self, value):
+    return String(value)
+
 
 class String(Single):
-  CAT__class__ = string_meta
+  CAT__class__ = StringType()
+  def __init__(self, value):
+    super().__init__(str(value))
+    
   def __hash__(self):
     return hash(self.value)
+    
+  def CAT__bool__(self):
+    return bool(self.get_object())
     
   def __getitem__(self, key):
     if not isinstance(key, int) and key.name not in ('int', 'slice'):
@@ -418,45 +507,15 @@ class String(Single):
       )
 
 
-class NullMeta(ValueMeta):
-  CAT__name__ = 'nulltype'
-  CAT__class__ = value_meta
-  def CAT__call__(self):
-    return null
-
-nulltype = NullMeta()
-
-class Null(Single):
-  CAT__class__ = nulltype
-  def __init__(self):
-    super().__init__(None)
-  
-  def get_object(self):
-    return None
-  
-  def __and__(self, other):
-    raise TypeError
-  
-  def __hash__(self):
-    return hash(None)
-  
-  def __eq__(self, other):
-    if isinstance(other, Null): 
-      return True
-    return NotImplemented
-
-null = Null()
-
-
-class TupleMeta(ValueMeta):
+class TupleType(Type):
   CAT__name__ = 'tuple'
-  CAT__class__ = value_meta
+  CAT__class__ = cat_type
   def CAT__call__(self, value):
     return Tuple(value)
-tuple_meta = TupleMeta()
+
 
 class Tuple(Single):
-  CAT__class__ = tuple_meta
+  CAT__class__ = TupleType()
   def __init__(self, value):
     super().__init__(tuple(value))
     
@@ -469,17 +528,19 @@ class Tuple(Single):
   def CAT__iter__(self):
     return iter(self.value)
   
-  
-  
-class ListMeta(ValueMeta):
+  def CAT__bool__(self):
+    return bool(self.get_object())
+
+
+class ListType(Type):
   CAT__name__ = 'list'
-  CAT__class__ = value_meta
+  CAT__class__ = cat_type
   def CAT__call__(self, value):
     return List(value)
 
 
 class List(Single):
-  CAT__class__ = ListMeta
+  CAT__class__ = ListType()
   def __init__(self, value):
     super().__init__(list(value))
     
@@ -493,7 +554,7 @@ class List(Single):
     return iter(self.value)
   
   def CAT__getitem__(self, key):
-    if key.name not in ('int', 'slice'):
+    if not isinstance(key, (Int, Slice)):
       raise errors.TypeError(
         self.pos_start, self.pos_end,
         f"list indices must be integers or slices, not {key.name}", self.context, 
@@ -525,17 +586,20 @@ class List(Single):
         key.pos_start, key.pos_end,
         str(e), self.context,
       )
+      
+  def CAT__bool__(self):
+    return bool(self.get_object())
 
 
-class DictMeta(ValueMeta):
+class DictType(Type):
   CAT__name__ = 'dict'
-  CAT__class__ = value_meta
+  CAT__class__ = cat_type
   def CAT__call__(self, value):
     return Dict(value)
-dict_meta = DictMeta
+
 
 class Dict(Single):
-  CAT__class__ = dict_meta
+  CAT__class__ = DictType()
   def __init__(self, value: dict):
     super().__init__(value)
 
@@ -576,10 +640,21 @@ class Dict(Single):
         key.pos_start, key.pos_end,
         str(e), self.context,
       )
+      
+  def get(self, key):
+    return self.CATget(key)
+ 
+  def keys(self):
+    return self.CATkeys()
+    
+  def values(self):
+    return self.CATvalues()
+    
+  def items(self):
+    return self.CATitems()
 
 
-class Slice(Value):
-  name = 'slice'
+class Slice(Object):
   def __init__(self, start, stop, step):
     super().__init__()
     if start is None:
@@ -599,7 +674,7 @@ class Slice(Value):
     return {k.get_pyobject(): v.get_pyobject() for k, v in self.items()}
 
 
-class Builtin_Function_Or_Method_Meta(Meta):
+class Builtin_Function_Or_Method_Type(Type):
   CAT__name__ = 'builtin_function_or_method'
   def CAT__call__(self):
     raise errors.TypeError(
@@ -607,10 +682,9 @@ class Builtin_Function_Or_Method_Meta(Meta):
       "cannot create 'builtin_function_or_method' instances", self.context
     )
 
-builtin_function_or_method_meta = Builtin_Function_Or_Method_Meta()
 
-class Builtin_Function_Or_Method(Value):
-  CAT__class__ = builtin_function_or_method_meta
+class Builtin_Function_Or_Method(Object):
+  CAT__class__ = Builtin_Function_Or_Method_Type()
   def __init__(self, func):
     self.func = func 
     self.CAT__name__ = func.__name__
@@ -632,3 +706,16 @@ class Builtin_Function_Or_Method(Value):
         self.pos_start, self.pos_end,
         f"bad operand type for {name.replace('_', '')}(): '{self.CAT__name__}'", self.context
       )
+
+
+class FunctionType(Type):
+  CAT__name__ = 'function'
+  CAT__class__ = cat_type
+
+
+class Function(Object):
+  CAT__class__ = FunctionType()
+  def __init__(self, func):
+    super().__init__()
+    self.CAT__call__ = func
+  

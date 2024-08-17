@@ -72,6 +72,7 @@ class Parser(object):
     self.blanks()
     if ISEOF(self.token.type):
       return TupleNode(res, pos_start, self.token.pos_end.copy())
+    
     res.extend(self.statement())
     while self.blanks() and not ISEOF(self.token.type):
       # with self.try_register():
@@ -261,9 +262,14 @@ class Parser(object):
         )
       tok = self.token
       self.advance()
-      return self.primary(GetAttrNode(atom, tok, pos_start, tok.pos_end.copy()))
+      return self.primary(GetAttrNode(atom, tok, atom.pos_start.copy(), tok.pos_end.copy()))
     
     if self.token.type == LPAR:
+      if not any(i.type == RPAR for i in self.tokens[self.index:]):
+        raise errors.SyntaxError(
+          self.token.pos_start, self.token.pos_end, 
+          "'(' was never closed"
+        )
       self.advance()
       args, kwargs = self.arguments()
       if self.token.type != RPAR:
@@ -272,18 +278,18 @@ class Parser(object):
           'expected ")"'
         )
       self.advance()
-      return self.primary(CallNode(atom, args, kwargs, pos_start, self.token.pos_end.copy()))
+      return self.primary(CallNode(atom, args, kwargs, atom.pos_start.copy(), self.token.pos_end.copy()))
     
     if self.token.type == LSQB:
-      self.advance()
-      key = self.slices()
-      if self.token.type != RSQB:
+      if not any(i.type == RSQB for i in self.tokens[self.index:]):
         raise errors.SyntaxError(
           self.token.pos_start, self.token.pos_end, 
-          'expected "]"'
+          "'[' was never closed"
         )
       self.advance()
-      return GetItemNode(self.primary(atom), key, pos_start, self.token.pos_end.copy())
+      key = self.slices()
+      self.advance()
+      return self.primary(GetItemNode(atom, key, pos_start, self.token.pos_end.copy()))
     return atom
   
   def arguments(self) -> tuple[TupleNode, DictNode]:
@@ -368,13 +374,19 @@ class Parser(object):
       return self.list_expr()
     if tok.type == LBRACE:
       return self.dict_expr()
-      
+    
     raise errors.SyntaxError(
       self.token.pos_start, self.token.pos_end,
     )
     
   def tuple_expr(self) -> TupleNode:
     pos_start = self.token.pos_start.copy()
+    if not any(i.type == RPAR for i in self.tokens[self.index:]):
+      raise errors.SyntaxError(
+        self.token.pos_start, self.token.pos_end, 
+        "'(' was never closed"
+      )
+      
     self.advance()
     if self.token.type == RPAR:
       self.advance()
@@ -435,6 +447,11 @@ class Parser(object):
         self.token.pos_start, self.token.pos_end, 
         'invalid syntax'
       )
+    if not any(i.type == RBRACE for i in self.tokens[self.index:]):
+      raise errors.SyntaxError(
+        self.token.pos_start, self.token.pos_end, 
+        "'{' was never closed"
+      )
       
     pos_start = self.token.pos_start.copy()
     self.advance()
@@ -451,7 +468,7 @@ class Parser(object):
     self.advance()
     return DictNode(items, pos_start, self.token.pos_end.copy())
     
-  def double_starred_kvpairs() -> dict[ASTNode, ASTNode]:
+  def double_starred_kvpairs(self) -> dict[ASTNode, ASTNode]:
     k, v = self.double_starred_kvpair()
     items = {k: v}
     while self.token.type == COMMA:
