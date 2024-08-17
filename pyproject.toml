@@ -1,12 +1,14 @@
 
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=64", "wheel", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["cathon*"]
 namespaces = false
+
+[tool.setuptools_scm]
 
 
 [project]
