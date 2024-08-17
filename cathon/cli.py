@@ -21,9 +21,9 @@ def run_file(file):
 class ArgumentParser(argparse.ArgumentParser):
   def error(self, message=None):
     if message and message[9:message.find(':')] == '-c':
-      print(_('Argument expected for the -c option'))
-      print(_('usage') + ': ' + self.usage)
-      print(_("Try") + " 'cathon -h' " + _("for more information."))
+      print('Argument expected for the -c option')
+      print('usage' + ': ' + self.usage)
+      print("Try" + " 'cathon -h' " + "for more information.")
       self.exit(2)
     super().error(message)
 
@@ -31,7 +31,7 @@ class ArgumentParser(argparse.ArgumentParser):
 def main():
   parser = ArgumentParser(
     prog='cathon',
-    usage='cathon ' + _('[option] ... [-c cmd | -m mod | file | -] [arg] ...')
+    usage='cathon ' + '[option] ... [-c cmd | -m mod | file | -] [arg] ...'
   )
   parser.add_argument('-v', '-V', '--version', action='version', version='%(prog)s ' + __version__)
   parser.add_argument('-c', dest='cmd')
