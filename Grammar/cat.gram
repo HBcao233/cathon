@@ -3,61 +3,65 @@
 program: [statements] ENDMARKER
 
 statements: statement+
-statement: compound_stmt | simple_stmts
+statement: stmts
+
+
+stmts:
+  | stmt !';' NEWLINE  # Not needed, there for speedup
+  | ';'.stmt+ [';'] NEWLINE 
+
+stmt: 
+  compound_stmt | simple_stmt
 
 compound_stmt: 
-    | if-stmt
+  | if-stmt
 
-simple_stmts:
-    | simple_stmt !';' NEWLINE  # Not needed, there for speedup
-    | ';'.simple_stmt+ [';'] NEWLINE 
-  
 simple_stmt:
-    | assignment 
-    | star_expressions 
+  | assignment 
+  | star_expressions 
 
 assignment:
-    | (atom '=' )+ star_expressions !'=' [TYPE_COMMENT] 
-    | atom augassign star_expressions
+  | (atom '=' )+ star_expressions !'=' [TYPE_COMMENT] 
+  | atom augassign star_expressions
 
 augassign:
-    | '+=' 
-    | '-=' 
-    | '*=' 
-    | '@=' 
-    | '/=' 
-    | '%=' 
-    | '&=' 
-    | '|=' 
-    | '^=' 
-    | '<<=' 
-    | '>>=' 
-    | '**=' 
-    | '//=' 
-    
+  | '+=' 
+  | '-=' 
+  | '*=' 
+  | '@=' 
+  | '/=' 
+  | '%=' 
+  | '&=' 
+  | '|=' 
+  | '^=' 
+  | '<<=' 
+  | '>>=' 
+  | '**=' 
+  | '//=' 
+  
 star_expressions: star_expression (',' star_expression )* [','] 
 
 star_expression:
-    # | '*' bitwise_or
-    | expression
+  # | '*' bitwise_or
+  | expression
 
 del_stmt: "del" ','.NAME+
 
 expressions: expression (',' expression )* [','] 
 
 expression:
-    | disjunction 'if' disjunction 'else' expression 
-    | disjunction '?' disjunction ':' expression
-    | disjunction
-    # | lambdef
+  | disjunction 'if' disjunction 'else' expression 
+  | disjunction '?' disjunction ':' expression
+  | disjunction
+  # | lambdef
 
 disjunction: conjunction (OR conjunction)*
 
 conjunction: inversion (AND inversion)*
 
 inversion: 
-    | NOT inversion
-    | comparison
+  | NOT inversion
+  | comparison
 
 comparison: bitwise_or (('==' | '!=' | '<>' | '<' | '>' | '>=' | '<=') bitwise_or)*
 
@@ -74,71 +78,71 @@ sum: term (('+' | '-' ) term)*
 term: power (('*' | '/' | '//' | '%' | '@') power)*
 
 factor: 
-    | ('+' | '-' | '~') factor
-    | primary
+  | ('+' | '-' | '~') factor
+  | primary
 
 power: primary ('**' primary)*
 
 primary: 
-    | primary '.' NAME
-    | primary  '(' [arguments] ')' 
-    | primary  '[' slices ']' 
-    | atom
-    
+  | primary '.' NAME
+  | primary  '(' [arguments] ')' 
+  | primary  '[' slices ']' 
+  | atom
+  
 slices:
-    | slice !',' 
-    | ','.(slice | expression)+ [','] 
+  | slice !',' 
+  | ','.(slice | expression)+ [','] 
 
 slice:
-    | [expression] ':' [expression] [':' [expression] ] 
-    | expression 
+  | [expression] ':' [expression] [':' [expression] ] 
+  | expression 
 
 arguments: 
-    | (expression ("," expression)* ","?)? 
-    | NAME '=' expression ("," NAME '=' expression)* ","?)? 
+  | (expression ("," expression)* ","?)? 
+  | NAME '=' expression ("," NAME '=' expression)* ","?)? 
 
 atom:
-    | NAME
-    | 'true'
-    | 'false'
-    | 'null'
-    | 'Inf'
-    | 'NaN'
-    | NUMBER
-    | STRING
-    | "(" expression ")" 
-    | tuple
-    | list
-    | dict
+  | NAME
+  | 'true'
+  | 'false'
+  | 'null'
+  | 'Inf'
+  | 'NaN'
+  | NUMBER
+  | STRING
+  | "(" expression ")" 
+  | tuple
+  | list
+  | dict
 
 
 tuple:
-    | '(' [star_expression ',' [star_expressions]  ] ')' 
+  | '(' [star_expression ',' [star_expressions]  ] ')' 
 
 list: 
-    | "[" [star_expressions] "]"
+  | "[" [star_expressions] "]"
 
 dict: 
-    | "{" [double_starred_kvpairs] "}"
+  | "{" [double_starred_kvpairs] "}"
 
 double_starred_kvpairs: ','.double_starred_kvpair+ [','] 
 
 double_starred_kvpair:
-    # | '**' bitwise_or 
-    | kvpair
+  # | '**' bitwise_or 
+  | kvpair
 
 kvpair: expression ':' expression
 
 
 if_stmt:
-    | 'if' expression ':' block elif_stmt 
-    | 'if' expression ':' block [else_block] 
+  | 'if' expression ':' block elif_stmt 
+  | 'if' expression ':' block [else_block] 
 elif_stmt:
-    | 'elif' expression ':' block elif_stmt 
-    | 'elif' expression ':' block [else_block]
+  | 'elif' expression ':' block elif_stmt 
+  | 'elif' expression ':' block [else_block]
 else_block:
-    | 'else' ':' block 
+  | 'else' ':' block 
 
 block: 
-    | NEWLINE INDENT statements DEDENT
-    | simple_stmts
+  | NEWLINE INDENT statements DEDENT
+  | simple_stmts

@@ -1,4 +1,4 @@
-import re 
+import re
 from itertools import chain
 from .token import *
 from .token import EXACT_TOKEN_TYPES
@@ -8,16 +8,20 @@ NOT_MATCH = r'(?!（|）|“|”|：|，)'
 DIGITS = re.compile(r'[0-9.]').match
 BIN_DIGITS = re.compile(r'[01]').match
 HEX_DIGITS = re.compile(r'[0-9a-fA-F]').match
-LETTERS = re.compile(NOT_MATCH+r'([a-zA-Z_\$]|[^\u0000-\u007F])').match
-LETTERS_DIGITS = re.compile(NOT_MATCH+r'([0-9a-zA-Z_\$]|[^\u0000-\u007F])').match
+LETTERS = re.compile(NOT_MATCH + r'([a-zA-Z_\$]|[^\u0000-\u007F])').match
+LETTERS_DIGITS = re.compile(NOT_MATCH + r'([0-9a-zA-Z_\$]|[^\u0000-\u007F])').match
 
 
 BUILTINS = {
-  '与', '或', '非',
-  'Inf', 'NaN', 'exit', 
+  '与',
+  '或',
+  '非',
+  'Inf',
+  'NaN',
+  'exit',
 }
 BUILTINS_FUNC: dict[tuple, callable] = {
-  ('print', '打印'): print,
+  ('print',): lambda *args: print(' '.join(i.CAT__str__() for i in args)),
   ('getattr', '取属性'): 'cat_getattr',
   ('abs', '绝对值'): 'cat_abs',
   ('len', '长度'): 'cat_len',
@@ -28,23 +32,30 @@ BUILTINS_FUNC: dict[tuple, callable] = {
 }
 BUILTINS |= set(chain.from_iterable(BUILTINS_FUNC))
 
-COMP_OP = { EQEQUAL, NOTEQUAL, LESS, GREATER, LESSEQUAL, GREATEREQUAL }
-BITWISE_OR_OP = { VBAR }
-BITWISE_XOR_OP = { CIRCUMFLEX }
-BITWISE_AND_OP = { AMPER }
-SHIFT_OP = { LEFTSHIFT, RIGHTSHIFT }
+COMP_OP = {EQEQUAL, NOTEQUAL, LESS, GREATER, LESSEQUAL, GREATEREQUAL}
+BITWISE_OR_OP = {VBAR}
+BITWISE_XOR_OP = {CIRCUMFLEX}
+BITWISE_AND_OP = {AMPER}
+SHIFT_OP = {LEFTSHIFT, RIGHTSHIFT}
 
-SUM_OP = { PLUS, MINUS }
-TERM_OP = { STAR, SLASH, DOUBLESLASH, PERCENT, AT }
-POWER_OP = { DOUBLESTAR }
-UNARY_OP = { PLUS, MINUS, TILDE }
+SUM_OP = {PLUS, MINUS}
+TERM_OP = {STAR, SLASH, DOUBLESLASH, PERCENT, AT}
+POWER_OP = {DOUBLESTAR}
+UNARY_OP = {PLUS, MINUS, TILDE}
 
 ASSIGNMENT_OP = {
-  PLUSEQUAL, MINEQUAL, 
-  STAREQUAL, SLASHEQUAL, PERCENTEQUAL, 
-  AMPEREQUAL, VBAREQUAL, CIRCUMFLEXEQUAL, 
-  LEFTSHIFTEQUAL, RIGHTSHIFTEQUAL, 
-  DOUBLESTAREQUAL, DOUBLESLASHEQUAL
+  PLUSEQUAL,
+  MINEQUAL,
+  STAREQUAL,
+  SLASHEQUAL,
+  PERCENTEQUAL,
+  AMPEREQUAL,
+  VBAREQUAL,
+  CIRCUMFLEXEQUAL,
+  LEFTSHIFTEQUAL,
+  RIGHTSHIFTEQUAL,
+  DOUBLESTAREQUAL,
+  DOUBLESLASHEQUAL,
 }
 ASSIGNMENT_OP_DICT = {
   PLUSEQUAL: PLUS,
@@ -64,27 +75,39 @@ OP_DICT = {
   '!': (EXCLAMATION, {'=': NOTEQUAL}),
   '%': (PERCENT, {'=': PERCENTEQUAL}),
   '&': (AMPER, {'=': AMPEREQUAL, '&': DOUBLEAMPER}),
-  '*': (STAR, {
-    '*': (DOUBLESTAR, {'=': DOUBLESTAREQUAL}),
-    '=': STAREQUAL,
-  }),
+  '*': (
+    STAR,
+    {
+      '*': (DOUBLESTAR, {'=': DOUBLESTAREQUAL}),
+      '=': STAREQUAL,
+    },
+  ),
   '+': (PLUS, {'=': PLUSEQUAL}),
   '-': (MINUS, {'=', MINEQUAL}),
-  '/': (SLASH, {
-    '/': (DOUBLESLASH, {'=': DOUBLESLASHEQUAL}),
-    '=': SLASHEQUAL,
-  }),
-  '<': (LESS, {
-    '<': (LEFTSHIFT, {'=': LEFTSHIFTEQUAL}),
-    '=': LESSEQUAL,
-    '>': NOTEQUAL,
-  }),
+  '/': (
+    SLASH,
+    {
+      '/': (DOUBLESLASH, {'=': DOUBLESLASHEQUAL}),
+      '=': SLASHEQUAL,
+    },
+  ),
+  '<': (
+    LESS,
+    {
+      '<': (LEFTSHIFT, {'=': LEFTSHIFTEQUAL}),
+      '=': LESSEQUAL,
+      '>': NOTEQUAL,
+    },
+  ),
   '=': (EQUAL, {'=': EQEQUAL}),
-  '>': (GREATER, {
-    '>': (RIGHTSHIFT, {'=': RIGHTSHIFTEQUAL}),
-    '=': GREATEREQUAL,
-  }),
-  '^': (CIRCUMFLEX, {'=': CIRCUMFLEXEQUAL}), 
+  '>': (
+    GREATER,
+    {
+      '>': (RIGHTSHIFT, {'=': RIGHTSHIFTEQUAL}),
+      '=': GREATEREQUAL,
+    },
+  ),
+  '^': (CIRCUMFLEX, {'=': CIRCUMFLEXEQUAL}),
   '|': (VBAR, {'=': VBAREQUAL, '|': DOUBLEVBAR}),
   '~': TILDE,
   '(': LPAR,
@@ -98,6 +121,7 @@ OP_DICT = {
   ':': COLON,
   ':=': COLONEQUAL,
   ';': SEMI,
+  '\n': NEWLINE,
   '@': AT,
   '@=': ATEQUAL,
   '?': QUESTION,
@@ -105,7 +129,7 @@ OP_DICT = {
   '为': EQEQUAL,
   '等': {'于': EQEQUAL},
   '不': {
-    '为': NOTEQUAL, 
+    '为': NOTEQUAL,
     '等': {'于': NOTEQUAL},
   },
   '小': {
@@ -139,11 +163,14 @@ ESCAPE_CHAR = {
 SPECIAL_KEYWORDS = {
   'true': (NUMBER, True),
   'false': (NUMBER, False),
+  'True': (NUMBER, True),
+  'False': (NUMBER, False),
   'and': (DOUBLEAMPER, None),
   'or': (DOUBLEVBAR, None),
   'not': (EXCLAMATION, None),
   '真': (NUMBER, True),
   '假': (NUMBER, False),
+  '打印': (NAME, 'print'),
 }
 
 DELETE_KEYWORDS = {'del', '删除'}
@@ -152,6 +179,7 @@ ELIF_KEYWORDS = ('elif', '又若', '又如')
 ELSE_KEYWORDS = ('else', '否则', '不然')
 
 KEYWORDS = {
-  'exit', 'pass', 
+  'exit',
+  'pass',
 }
-KEYWORDS |=  DELETE_KEYWORDS | set(IF_KEYWORDS) | set(ELIF_KEYWORDS) | set(ELSE_KEYWORDS)
+KEYWORDS |= DELETE_KEYWORDS | set(IF_KEYWORDS) | set(ELIF_KEYWORDS) | set(ELSE_KEYWORDS)

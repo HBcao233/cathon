@@ -1,4 +1,4 @@
-from cat.lexer import Lexer 
+from cat.lexer import Lexer
 
 
 file = 'tests/test.cat'

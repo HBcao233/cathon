@@ -4,4 +4,3 @@ class Context(object):
     self.parent = parent
     self.parent_pos = parent_pos
     self.symbol_table = None
-    

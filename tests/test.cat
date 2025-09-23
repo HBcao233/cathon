@@ -1,11 +1,30 @@
+  //*
 变量1 赋值 2
 变量2 赋值 '世界！'
 如果 变量1：
-  打印（“你好，”，“世界！”)
-
+  打印（“你好，”，变量2)
 
 若 len(变量2)：
   打印（“真”）
 否则：
   print（假）
+//*/
 
+if True:
+  print('a')
+else:
+  if 0:
+    print('a2')
+  print('a3')
+  
+if True: print('b')
+if (false) print('c'); 打印('c2');;
+if (true) { print('d'); print('d2') }
+if 1 {
+  print('e')
+  print('e2')
+}
+
+if (1) {
+print(1)
+} 

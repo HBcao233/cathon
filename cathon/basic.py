@@ -1,12 +1,15 @@
 from .constants import *
-from .lexer.lexer import Lexer 
-from .parser.parser import Parser
+from . import (
+  Lexer,
+  Parser,
+  Deparser,
+)
 from .interpreter import (
-  Interpreter, 
-  Context, 
-  SymbolTable, 
+  Interpreter,
+  Context,
+  SymbolTable,
   Builtin_Function_Or_Method,
-  values
+  values,
 )
 
 
@@ -27,10 +30,10 @@ def set_builtins():
   g.set('list', values.List.CAT__class__)
   g.set('tuple', values.Tuple.CAT__class__)
   g.set('dict', values.Dict.CAT__class__)
-  
+
   for names, func in BUILTINS_FUNC.items():
-    assert isinstance(names, tuple), "item of BUILTINS_FUNC must be a tuple"
-    
+    assert isinstance(names, tuple), 'item of BUILTINS_FUNC must be a tuple'
+
     func_name = names[0]
     if isinstance(func, str):
       func = getattr(values, func)
@@ -40,10 +43,25 @@ def set_builtins():
 
 def run(file, code):
   set_builtins()
-  
-  lexer = Lexer(file, code)
-  tokens = lexer.parse()
-  ast = Parser(tokens).parse()
-  context = Context('<module>')
-  context.symbol_table = global_symbol_table
-  return Interpreter.visit(ast, context)
+  try:
+    lexer = Lexer(file, code)
+    tokens = lexer.parse()
+    ast = Parser(tokens).parse()
+    context = Context('<module>')
+    context.symbol_table = global_symbol_table
+    return Interpreter.visit(ast, context)
+  except errors.BaseError as e:
+    print(str(e))
+
+
+def deparse(file, code, output):
+  try:
+    lexer = Lexer(file, code)
+    tokens = lexer.parse()
+    ast = Parser(tokens).parse()
+  except errors.BaseError as e:
+    print(e)
+    exit()
+  else:
+    res = Deparser.visit(ast, Deparser.Context(0))
+    output.write(res)

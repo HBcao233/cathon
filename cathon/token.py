@@ -3,61 +3,61 @@
 
 __all__ = ['tok_name', 'ISTERMINAL', 'ISNONTERMINAL', 'ISEOF']
 
-ENDMARKER = 0          # EOF
-NAME = 1               # IDENTIFIER or KEYWORD
-NUMBER = 2             # NUMBER
-STRING = 3             # STRING
-NEWLINE = 4            # \n
-INDENT = 5             # 
-DEDENT = 6             # 
-LPAR = 7               # (
-RPAR = 8               # )
-LSQB = 9               # [
-RSQB = 10              # ]
-COLON = 11             # :
-COMMA = 12             # ,
-SEMI = 13              # ;
-PLUS = 14              # +
-MINUS = 15             # -
-STAR = 16              # *
-SLASH = 17             # /
-VBAR = 18              # |
-AMPER = 19             # &
-LESS = 20              # <
-GREATER = 21           # >
-EQUAL = 22             # =
-DOT = 23               # .
-PERCENT = 24           # %
-LBRACE = 25            # {
-RBRACE = 26            # }
-EQEQUAL = 27           # ==
-NOTEQUAL = 28          # !=
-LESSEQUAL = 29         # <= 
-GREATEREQUAL = 30      # >=
-TILDE = 31             # ~
-CIRCUMFLEX = 32        # ^
-LEFTSHIFT = 33         # <<
-RIGHTSHIFT = 34        # >>
-DOUBLESTAR = 35        # **
-PLUSEQUAL = 36         # += 
-MINEQUAL = 37          # -=
-STAREQUAL = 38         # *=
-SLASHEQUAL = 39        # /=
-PERCENTEQUAL = 40      # %=
-AMPEREQUAL = 41        # &=
-VBAREQUAL = 42         # |=
-CIRCUMFLEXEQUAL = 43   # ^=
-LEFTSHIFTEQUAL = 44    # <<=
-RIGHTSHIFTEQUAL = 45   # >>=
-DOUBLESTAREQUAL = 46   # **=
-DOUBLESLASH = 47       # //
+ENDMARKER = 0  # EOF
+NAME = 1  # IDENTIFIER or KEYWORD
+NUMBER = 2  # NUMBER
+STRING = 3  # STRING
+NEWLINE = 4  # \n
+INDENT = 5  #
+DEDENT = 6  #
+LPAR = 7  # (
+RPAR = 8  # )
+LSQB = 9  # [
+RSQB = 10  # ]
+COLON = 11  # :
+COMMA = 12  # ,
+SEMI = 13  # ;
+PLUS = 14  # +
+MINUS = 15  # -
+STAR = 16  # *
+SLASH = 17  # /
+VBAR = 18  # |
+AMPER = 19  # &
+LESS = 20  # <
+GREATER = 21  # >
+EQUAL = 22  # =
+DOT = 23  # .
+PERCENT = 24  # %
+LBRACE = 25  # {
+RBRACE = 26  # }
+EQEQUAL = 27  # ==
+NOTEQUAL = 28  # !=
+LESSEQUAL = 29  # <=
+GREATEREQUAL = 30  # >=
+TILDE = 31  # ~
+CIRCUMFLEX = 32  # ^
+LEFTSHIFT = 33  # <<
+RIGHTSHIFT = 34  # >>
+DOUBLESTAR = 35  # **
+PLUSEQUAL = 36  # +=
+MINEQUAL = 37  # -=
+STAREQUAL = 38  # *=
+SLASHEQUAL = 39  # /=
+PERCENTEQUAL = 40  # %=
+AMPEREQUAL = 41  # &=
+VBAREQUAL = 42  # |=
+CIRCUMFLEXEQUAL = 43  # ^=
+LEFTSHIFTEQUAL = 44  # <<=
+RIGHTSHIFTEQUAL = 45  # >>=
+DOUBLESTAREQUAL = 46  # **=
+DOUBLESLASH = 47  # //
 DOUBLESLASHEQUAL = 48  # //=
-AT = 49                # @
-ATEQUAL = 50           # @=
-RARROW = 51            # ->
-ELLIPSIS = 52          # ...
-COLONEQUAL = 53        # :=
-EXCLAMATION = 54       # !
+AT = 49  # @
+ATEQUAL = 50  # @=
+RARROW = 51  # ->
+ELLIPSIS = 52  # ...
+COLONEQUAL = 53  # :=
+EXCLAMATION = 54  # !
 OP = 55
 TYPE_IGNORE = 56
 TYPE_COMMENT = 57
@@ -66,7 +66,7 @@ FSTRING_START = 59
 FSTRING_MIDDLE = 60
 FSTRING_END = 61
 COMMENT = 62
-NL = 63                # \
+NL = 63  # \
 # These aren't used by the C tokenizer but are needed for tokenize.py
 ERRORTOKEN = 64
 ENCODING = 65
@@ -74,77 +74,82 @@ N_TOKENS = 66
 # Special definitions for cooperation with parser
 NT_OFFSET = 256
 
-# not in python 
+# not in python
 QUESTION = 101
 DOUBLEAMPER = 102
 DOUBLEVBAR = 103
 
 
-tok_name = {value: name
-            for name, value in globals().items()
-            if isinstance(value, int) and not name.startswith('_')}
+tok_name = {
+  value: name
+  for name, value in globals().items()
+  if isinstance(value, int) and not name.startswith('_')
+}
 __all__.extend(tok_name.values())
 
 EXACT_TOKEN_TYPES = {
-    '!': EXCLAMATION,
-    '!=': NOTEQUAL,
-    '%': PERCENT,
-    '%=': PERCENTEQUAL,
-    '&': AMPER,
-    '&=': AMPEREQUAL,
-    '(': LPAR,
-    ')': RPAR,
-    '*': STAR,
-    '**': DOUBLESTAR,
-    '**=': DOUBLESTAREQUAL,
-    '*=': STAREQUAL,
-    '+': PLUS,
-    '+=': PLUSEQUAL,
-    ',': COMMA,
-    '-': MINUS,
-    '-=': MINEQUAL,
-    '->': RARROW,
-    '.': DOT,
-    '...': ELLIPSIS,
-    '/': SLASH,
-    '//': DOUBLESLASH,
-    '//=': DOUBLESLASHEQUAL,
-    '/=': SLASHEQUAL,
-    ':': COLON,
-    ':=': COLONEQUAL,
-    ';': SEMI,
-    '<': LESS,
-    '<<': LEFTSHIFT,
-    '<<=': LEFTSHIFTEQUAL,
-    '<=': LESSEQUAL,
-    '=': EQUAL,
-    '==': EQEQUAL,
-    '>': GREATER,
-    '>=': GREATEREQUAL,
-    '>>': RIGHTSHIFT,
-    '>>=': RIGHTSHIFTEQUAL,
-    '@': AT,
-    '@=': ATEQUAL,
-    '[': LSQB,
-    ']': RSQB,
-    '^': CIRCUMFLEX,
-    '^=': CIRCUMFLEXEQUAL,
-    '{': LBRACE,
-    '|': VBAR,
-    '|=': VBAREQUAL,
-    '}': RBRACE,
-    '~': TILDE,
-    # not in python
-    '?': QUESTION,
-    '&&': DOUBLEAMPER,
-    '||': DOUBLEVBAR,
+  '!': EXCLAMATION,
+  '!=': NOTEQUAL,
+  '%': PERCENT,
+  '%=': PERCENTEQUAL,
+  '&': AMPER,
+  '&=': AMPEREQUAL,
+  '(': LPAR,
+  ')': RPAR,
+  '*': STAR,
+  '**': DOUBLESTAR,
+  '**=': DOUBLESTAREQUAL,
+  '*=': STAREQUAL,
+  '+': PLUS,
+  '+=': PLUSEQUAL,
+  ',': COMMA,
+  '-': MINUS,
+  '-=': MINEQUAL,
+  '->': RARROW,
+  '.': DOT,
+  '...': ELLIPSIS,
+  '/': SLASH,
+  '//': DOUBLESLASH,
+  '//=': DOUBLESLASHEQUAL,
+  '/=': SLASHEQUAL,
+  ':': COLON,
+  ':=': COLONEQUAL,
+  ';': SEMI,
+  '<': LESS,
+  '<<': LEFTSHIFT,
+  '<<=': LEFTSHIFTEQUAL,
+  '<=': LESSEQUAL,
+  '=': EQUAL,
+  '==': EQEQUAL,
+  '>': GREATER,
+  '>=': GREATEREQUAL,
+  '>>': RIGHTSHIFT,
+  '>>=': RIGHTSHIFTEQUAL,
+  '@': AT,
+  '@=': ATEQUAL,
+  '[': LSQB,
+  ']': RSQB,
+  '^': CIRCUMFLEX,
+  '^=': CIRCUMFLEXEQUAL,
+  '{': LBRACE,
+  '|': VBAR,
+  '|=': VBAREQUAL,
+  '}': RBRACE,
+  '~': TILDE,
+  # not in python
+  '?': QUESTION,
+  '&&': DOUBLEAMPER,
+  '||': DOUBLEVBAR,
 }
 
+
 def ISTERMINAL(x):
-    return x < NT_OFFSET
+  return x < NT_OFFSET
+
 
 def ISNONTERMINAL(x):
-    return x >= NT_OFFSET
+  return x >= NT_OFFSET
+
 
 def ISEOF(x):
-    return x == ENDMARKER
+  return x == ENDMARKER

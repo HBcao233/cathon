@@ -1,10 +1,14 @@
-import re, string, sys, os, atexit
+import re
+import string
+import sys
+import os
+import atexit
 from . import errors, __version__
 from .basic import run
 from .constants import BUILTINS, KEYWORDS
 from .interpreter import values
 
-__all__ = ["Shell"]
+__all__ = ['Shell']
 
 PROMPT = '>>> '
 MULTI_PROMPT = '... '
@@ -21,15 +25,16 @@ class Shell:
     self.stdin = sys.stdin
     self.stdout = sys.stdout
     self.cmdqueue = []
-    self.histfile = os.path.expanduser("~/.cat_history")
-    
+    self.histfile = os.path.expanduser('~/.cat_history')
+
     try:
       import readline
+
       if not os.path.isfile(self.histfile):
         open(self.histfile, 'w').close()
       self.old_completer = readline.get_completer()
       readline.set_completer(self.complete)
-      readline.parse_and_bind("tab: complete")
+      readline.parse_and_bind('tab: complete')
       try:
         readline.read_history_file(self.histfile)
         self.hlen = readline.get_current_history_length()
@@ -38,20 +43,20 @@ class Shell:
       atexit.register(self.save_history)
     except ImportError:
       pass
-   
-    self.stdout.write(str(self.intro)+"\n")
+
+    self.stdout.write(str(self.intro) + '\n')
     while True:
       try:
         line = input(self.prompt)
       except KeyboardInterrupt:
-        self.stdout.write("\nKeyboardInterrupt\n")
+        self.stdout.write('\nKeyboardInterrupt\n')
         self.prompt = PROMPT
         self.cmdqueue = []
         continue
       except EOFError:
-        self.stdout.write("\n")
+        self.stdout.write('\n')
         sys.exit(0)
-        
+
       if self.prompt != MULTI_PROMPT:
         if newline_pattern(line):
           self.prompt = MULTI_PROMPT
@@ -65,7 +70,7 @@ class Shell:
           self.cmdqueue = []
       if self.prompt != MULTI_PROMPT:
         self.main(line)
-      
+
   def main(self, line):
     try:
       res = run('<stdin>', line).get_object()
@@ -77,26 +82,30 @@ class Shell:
           print(repr(res))
     except errors.BaseError as e:
       print(str(e))
-    
+
   def save_history(self):
     import readline
+
     readline.set_completer(self.old_completer)
     readline.set_history_length(1000)
-    readline.append_history_file(readline.get_current_history_length() - self.hlen, self.histfile)
+    readline.append_history_file(
+      readline.get_current_history_length() - self.hlen, self.histfile
+    )
 
   def parseline(self, line):
     line = line.strip()
     if not line:
-        return None, None, line
+      return None, None, line
     elif line[0] == '?':
-        line = 'help ' + line[1:]
+      line = 'help ' + line[1:]
     elif line[0] == '!':
-        if hasattr(self, 'do_shell'):
-            line = 'shell ' + line[1:]
-        else:
-            return None, None, line
+      if hasattr(self, 'do_shell'):
+        line = 'shell ' + line[1:]
+      else:
+        return None, None, line
     i, n = 0, len(line)
-    while i < n and line[i] in self.identchars: i = i+1
+    while i < n and line[i] in self.identchars:
+      i = i + 1
     cmd, arg = line[:i], line[i:].strip()
     return cmd, arg, line
 
@@ -109,6 +118,7 @@ class Shell:
   def complete(self, text, state):
     if state == 0:
       import readline
+
       origline = readline.get_line_buffer()
       line = origline.lstrip()
       stripped = len(origline) - len(line)

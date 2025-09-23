@@ -1,5 +1,5 @@
-from cat.lexer import Lexer 
-from cat.parser import Parser 
+from cathon.lexer import Lexer
+from cathon.parser import Parser
 
 
 file = 'tests/test.cat'
